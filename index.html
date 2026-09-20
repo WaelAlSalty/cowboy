@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gravity Ring: Wild West Cowboys Realtime FFA + Mobile</title>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      background: #090806;
+      color: #fff;
+      font-family: 'Arial Black', Impact, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-top: 10px;
+      touch-action: none;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 920px;
+      max-width: 100%;
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .room-tag {
+      font-size: 13px;
+      color: #d4a373;
+      letter-spacing: 1px;
+    }
+    .telemetry {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ping-badge {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #00ff88;
+    }
+    .net-tag {
+      font-size: 13px;
+      color: #00ff88;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    .btn-action {
+      background: #2b1d0e;
+      color: #ffd700;
+      border: 1px solid #d4a373;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: 0.15s;
+    }
+    .btn-action:hover {
+      background: #4a341b;
+      transform: scale(1.04);
+    }
+    .btn-surrender {
+      background: #7a1c1c;
+      color: #fff;
+      border-color: #ff4d4d;
+    }
+    .btn-surrender:hover {
+      background: #a82424;
+    }
+    .scoreboard {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      background: rgba(43, 29, 14, 0.4);
+      border: 1px solid rgba(212, 163, 115, 0.4);
+      padding: 6px 16px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      width: 920px;
+      max-width: 100%;
+      flex-wrap: wrap;
+    }
+    .score-item {
+      font-size: 13px;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 920px;
+      max-width: 100%;
+      padding: 0 10px;
+      margin-bottom: 8px;
+    }
+    .my-card {
+      background: rgba(43, 29, 14, 0.5);
+      border: 1px solid rgba(212, 163, 115, 0.4);
+      padding: 6px 16px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .my-title {
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .damage-display {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      font-family: monospace;
+    }
+    .players-count {
+      font-size: 13px;
+      color: #d4a373;
+      letter-spacing: 1px;
+    }
+    .canvas-container {
+      position: relative;
+      width: 920px;
+      max-width: 100%;
+    }
+    canvas {
+      background: #14110d;
+      border: 2px solid #d4a373;
+      border-radius: 12px;
+      box-shadow: 0 0 35px rgba(212, 163, 115, 0.2);
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .controls-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #a89f91;
+      font-family: sans-serif;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .key-badge {
+      background: #2b1d0e;
+      color: #ffd700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #d4a373;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    #kill-feed {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      color: #ffd700;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+      display: none;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #custom-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      flex-direction: column;
+      background: rgba(20, 16, 12, 0.98);
+      border: 3px solid #d4a373;
+      padding: 25px 35px;
+      border-radius: 12px;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
+      z-index: 30;
+      width: 440px;
+      max-width: 95%;
+    }
+    #custom-modal h2 {
+      font-size: 22px;
+      color: #d4a373;
+      text-align: center;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+    .custom-section {
+      margin-bottom: 14px;
+    }
+    .custom-section label {
+      font-size: 12px;
+      color: #ffd700;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .theme-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .theme-btn {
+      flex: 1;
+      background: #2b1d0e;
+      color: #ccc;
+      border: 1px solid #555;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .theme-btn.active {
+      border-color: #ffd700;
+      background: #4a341b;
+      color: #ffd700;
+    }
+    .keybind-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .keybind-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .keybind-btn {
+      background: #14110d;
+      border: 1px solid #d4a373;
+      color: #ffd700;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 50px;
+      text-align: center;
+    }
+    .keybind-btn.recording {
+      border-color: #ff3366;
+      background: #ff3366;
+      color: #fff;
+    }
+    .ad-web-container {
+      margin-top: 10px;
+      width: 728px;
+      max-width: 100%;
+      min-height: 90px;
+      background: rgba(20, 16, 12, 0.9);
+      border: 1px dashed rgba(212, 163, 115, 0.5);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 4px 0;
+    }
+    .ad-label {
+      position: absolute;
+      top: 2px;
+      left: 6px;
+      font-size: 9px;
+      color: #888;
+      font-family: sans-serif;
+      text-transform: uppercase;
+      z-index: 10;
+    }
+    #overlay {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(18, 14, 10, 0.97);
+      border: 3px solid #d4a373;
+      padding: 35px 25px;
+      z-index: 20;
+      overflow-y: auto;
+    }
+    #overlay h1 {
+      font-size: 32px;
+      color: #d4a373;
+      text-shadow: 0 0 25px rgba(212, 163, 115, 0.8);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    #overlay p {
+      font-size: 14px;
+      color: #ccc;
+      margin-bottom: 20px;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    .role-select {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .role-btn {
+      background: #2b1d0e;
+      border: 2px solid #555;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .role-btn.active {
+      border-color: #ffd700;
+      background: #4a341b;
+      color: #ffd700;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    input[type="text"] {
+      background: #2b1d0e;
+      border: 1px solid #d4a373;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      outline: none;
+    }
+    button.connect-btn {
+      background: #d4a373;
+      color: #1a1105;
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 10px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: 0.15s;
+    }
+    button.connect-btn:hover {
+      background: #e9c496;
+      transform: scale(1.04);
+    }
+
+    /* CONTROLES MOBILE TARTARUGA / VIRTUAIS */
+    #mobile-controls {
+      display: none;
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+    .m-joy-base {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: rgba(43, 29, 14, 0.4);
+      border: 2px solid rgba(212, 163, 115, 0.4);
+      pointer-events: auto;
+      touch-action: none;
+    }
+    .m-joy-stick {
+      position: absolute;
+      top: 32px;
+      left: 32px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #d4a373;
+      box-shadow: 0 0 10px #ffd700;
+      pointer-events: none;
+    }
+    .m-action-buttons {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .m-btn {
+      background: rgba(43, 29, 14, 0.7);
+      border: 2px solid #d4a373;
+      color: #ffd700;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 12px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .m-btn:active {
+      background: #4a341b;
+      transform: scale(0.95);
+    }
+    .m-btn-fire {
+      background: #7a1c1c;
+      border-color: #ff4d4d;
+      color: #fff;
+      width: 68px;
+      height: 68px;
+    }
+
+    @media (max-pointer: coarse), (max-width: 768px) {
+      #mobile-controls {
+        display: block;
+      }
+      .controls-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <audio id="western-music" src="faroeste.mp3" preload="auto" loop></audio>
+
+  <div class="top-bar">
+    <div class="room-tag" id="room-status">SALOON: DESCONECTADO</div>
+    <div class="telemetry">
+      <button type="button" class="btn-action" onclick="toggleCustomModal()">⚙️ Customizar</button>
+      <button type="button" class="btn-action btn-surrender" onclick="surrender()">🏳️ Render-se (R)</button>
+      <div class="ping-badge" id="ping-display">PING: -- ms</div>
+      <div class="net-tag" id="net-status">P2P UDP: OFFLINE</div>
+    </div>
+  </div>
+
+  <div class="scoreboard" id="scoreboard">
+    <span style="color:#888; font-size: 12px;">AGUARDANDO PISTOLEIROS...</span>
+  </div>
+
+  <div class="hud">
+    <div class="my-card">
+      <div class="my-title" id="my-label">MEU COWBOY</div>
+      <div class="damage-display" id="my-dmg" style="color: #ffd700;">0%</div>
+    </div>
+    <div class="players-count" id="player-count">COWBOYS NO DUELO: 0</div>
+  </div>
+
+  <div class="canvas-container">
+    <div id="kill-feed"></div>
+    <canvas id="arena" width="920" height="460"></canvas>
+    
+    <!-- CONTROLES TÁTEIS PARA CELULAR / TABLET -->
+    <div id="mobile-controls">
+      <div class="m-joy-base" id="m-joy-base">
+        <div class="m-joy-stick" id="m-joy-stick"></div>
+      </div>
+      <div class="m-action-buttons">
+        <button type="button" class="m-btn" id="m-btn-jump">Pular</button>
+        <button type="button" class="m-btn" id="m-btn-sprint">Correr</button>
+        <button type="button" class="m-btn m-btn-fire" id="m-btn-fire">ATIRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-hint" id="controls-hint-bar">
+    <span>Mover: <span class="key-badge" id="badge-left">A</span>/<span class="key-badge" id="badge-right">D</span></span>
+    <span>Pulo: <span class="key-badge" id="badge-jump">Space</span></span>
+    <span>Acelerar: <span class="key-badge" id="badge-shift">Shift</span></span>
+    <span>Tiro: <span class="key-badge" id="badge-shoot">Enter</span></span>
+    <span>Render-se: <span class="key-badge">R</span></span>
+  </div>
+
+  <div class="ad-web-container" id="ad-container">
+    <span class="ad-label">Patrocínio do Saloon</span>
+    <!-- BEGIN AADS AD UNIT 2454775 -->
+    <div id="frame" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
+      <iframe data-aa='2454775' src='//acceptable.a-ads.com/2454775/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:auto; min-height:90px; overflow:hidden; display: block; margin: auto;'></iframe>
+    </div>
+    <!-- END AADS AD UNIT 2454775 -->
+  </div>
+
+  <div id="custom-modal">
+    <h2>PAINEL DE CUSTOMIZAÇÃO</h2>
+    
+    <div class="custom-section">
+      <label>AMBIENTE DO DUELO (TEMA):</label>
+      <div class="theme-buttons">
+        <button type="button" class="theme-btn active" id="theme-canyon" onclick="setTheme('canyon')">Canyon Clássico</button>
+        <button type="button" class="theme-btn" id="theme-midnight" onclick="setTheme('midnight')">Saloon Noturno</button>
+        <button type="button" class="theme-btn" id="theme-volcano" onclick="setTheme('volcano')">Terra de Lava</button>
+      </div>
+    </div>
+
+    <div class="custom-section">
+      <label>RECONFIGURAR BOTÕES DO TECLADO:</label>
+      <div class="keybind-grid">
+        <div class="keybind-row">
+          <span>Esquerda:</span>
+          <button type="button" class="keybind-btn" id="kbtn-moveLeft" onclick="recordKey('moveLeft')">KeyA</button>
+        </div>
+        <div class="keybind-row">
+          <span>Direita:</span>
+          <button type="button" class="keybind-btn" id="kbtn-moveRight" onclick="recordKey('moveRight')">KeyD</button>
+        </div>
+        <div class="keybind-row">
+          <span>Pular:</span>
+          <button type="button" class="keybind-btn" id="kbtn-jump" onclick="recordKey('jump')">Space</button>
+        </div>
+        <div class="keybind-row">
+          <span>Acelerar:</span>
+          <button type="button" class="keybind-btn" id="kbtn-sprint" onclick="recordKey('sprint')">ShiftLeft</button>
+        </div>
+        <div class="keybind-row" style="grid-column: span 2;">
+          <span>Disparar Colt 45:</span>
+          <button type="button" class="keybind-btn" id="kbtn-shoot" onclick="recordKey('shoot')">Enter</button>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="btn-action" style="padding: 8px; margin-top: 6px; width: 100%;" onclick="toggleCustomModal()">Salvar & Fechar</button>
+  </div>
+
+  <div id="overlay">
+    <h1>WILD WEST: COWBOY 1v1</h1>
+    <p id="overlay-msg">Entre com 2 ou mais pistoleiros no mesmo Saloon!</p>
+    
+    <div class="role-select">
+      <button type="button" class="role-btn active" id="btn-host" onclick="selectRole('host')">CRIAR SALA (XERIFE / HOST)</button>
+      <button type="button" class="role-btn" id="btn-client" onclick="selectRole('client')">ENTRAR NO SALOON</button>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="room-input" value="SALOON-DUELO-99" placeholder="Nome do Saloon">
+      <button type="button" class="connect-btn" onclick="startP2P()">Entrar no Faroeste</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('arena');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayMsg = document.getElementById('overlay-msg');
+    const roomStatus = document.getElementById('room-status');
+    const netStatus = document.getElementById('net-status');
+    const pingDisplay = document.getElementById('ping-display');
+    const killFeed = document.getElementById('kill-feed');
+    const scoreboard = document.getElementById('scoreboard');
+    const playerCount = document.getElementById('player-count');
+    const myLabel = document.getElementById('my-label');
+    const myDmg = document.getElementById('my-dmg');
+    const westernMusic = document.getElementById('western-music');
+    const customModal = document.getElementById('custom-modal');
+
+    const platform = { x: 210, y: 325, w: 500, h: 24 };
+
+    const PALETTE = ['#e63946', '#00e5ff', '#38b000', '#ffd700', '#c77dff', '#fb8500', '#06d6a0'];
+
+    let keybindings = {
+      moveLeft: 'KeyA',
+      moveRight: 'KeyD',
+      jump: 'Space',
+      sprint: 'ShiftLeft',
+      shoot: 'Enter'
+    };
+
+    let recordingAction = null;
+
+    let currentTheme = 'canyon';
+    const THEMES = {
+      canyon: {
+        bg: '#14110d',
+        border: '#d4a373',
+        platFill: '#3a2312',
+        platBorder: '#d4a373',
+        platAcc: '#ffd700',
+        deadBorder: 'rgba(212, 163, 115, 0.25)'
+      },
+      midnight: {
+        bg: '#080a14',
+        border: '#00e5ff',
+        platFill: '#14182b',
+        platBorder: '#00e5ff',
+        platAcc: '#ff0055',
+        deadBorder: 'rgba(0, 229, 255, 0.25)'
+      },
+      volcano: {
+        bg: '#180707',
+        border: '#ff3300',
+        platFill: '#2b0c0c',
+        platBorder: '#ff5500',
+        platAcc: '#ffcc00',
+        deadBorder: 'rgba(255, 51, 0, 0.35)'
+      }
+    };
+
+    function setTheme(themeKey) {
+      if (!THEMES[themeKey]) return;
+      currentTheme = themeKey;
+      document.getElementById('theme-canyon').classList.toggle('active', themeKey === 'canyon');
+      document.getElementById('theme-midnight').classList.toggle('active', themeKey === 'midnight');
+      document.getElementById('theme-volcano').classList.toggle('active', themeKey === 'volcano');
+    }
+
+    function toggleCustomModal() {
+      const isVisible = customModal.style.display === 'flex';
+      customModal.style.display = isVisible ? 'none' : 'flex';
+      if (recordingAction) {
+        document.getElementById(`kbtn-${recordingAction}`).classList.remove('recording');
+        recordingAction = null;
+      }
+    }
+
+    function recordKey(action) {
+      if (recordingAction) {
+        document.getElementById(`kbtn-${recordingAction}`).classList.remove('recording');
+      }
+      recordingAction = action;
+      const btn = document.getElementById(`kbtn-${action}`);
+      btn.classList.add('recording');
+      btn.innerText = '...';
+    }
+
+    function updateControlBadges() {
+      document.getElementById('badge-left').innerText = keybindings.moveLeft.replace('Key', '');
+      document.getElementById('badge-right').innerText = keybindings.moveRight.replace('Key', '');
+      document.getElementById('badge-jump').innerText = keybindings.jump;
+      document.getElementById('badge-shift').innerText = keybindings.sprint.replace('Left', '').replace('Right', '');
+      document.getElementById('badge-shoot').innerText = keybindings.shoot;
+
+      for (const action in keybindings) {
+        const btn = document.getElementById(`kbtn-${action}`);
+        if (btn) btn.innerText = keybindings[action];
+      }
+    }
+
+    let selectedRole = 'host';
+    let peer = null;
+    let myId = null;
+    let isConnected = false;
+
+    const clientConnections = {};
+    const clientInputs = {};
+    let hostConn = null;
+
+    const players = {};
+    const playerTargets = {};
+
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById('btn-host').classList.toggle('active', role === 'host');
+      document.getElementById('btn-client').classList.toggle('active', role === 'client');
+    }
+
+    const rawKeys = {};
+    window.addEventListener('keydown', (e) => {
+      if (recordingAction) {
+        keybindings[recordingAction] = e.code;
+        const btn = document.getElementById(`kbtn-${recordingAction}`);
+        btn.classList.remove('recording');
+        btn.innerText = e.code;
+        recordingAction = null;
+        updateControlBadges();
+        e.preventDefault();
+        return;
+      }
+
+      if (e.code === 'KeyR' && isConnected) {
+        surrender();
+        return;
+      }
+
+      rawKeys[e.code] = true;
+
+      if (isConnected) {
+        if (selectedRole === 'host') {
+          if (players[myId]) {
+            if (e.code === keybindings.jump) players[myId].jump();
+            if (e.code === keybindings.shoot) players[myId].shootAttack();
+          }
+        } else {
+          if (e.code === keybindings.jump || e.code === keybindings.shoot) {
+            sendToHost({ t: 'action', action: e.code === keybindings.jump ? 'jump' : 'shoot' });
+          }
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      rawKeys[e.code] = false;
+      if (selectedRole === 'client' && isConnected) {
+        if (e.code === keybindings.moveLeft || e.code === keybindings.moveRight || e.code === keybindings.sprint) {
+          sendClientInputs();
+        }
+      }
+    });
+
+    // SISTEMA DE CONTROLES MOBILE TOUCH (JOYSTICK E BOTÕES)
+    const touchState = { left: false, right: false, shift: false };
+    const mJoyBase = document.getElementById('m-joy-base');
+    const mJoyStick = document.getElementById('m-joy-stick');
+    let mTouchId = null;
+
+    if (mJoyBase) {
+      mJoyBase.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        mTouchId = touch.identifier;
+        updateJoystick(touch);
+      }, { passive: false });
+
+      mJoyBase.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === mTouchId) {
+            updateJoystick(touch);
+          }
+        }
+      }, { passive: false });
+
+      const endJoyTouch = (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === mTouchId) {
+            mTouchId = null;
+            mJoyStick.style.transform = `translate(0px, 0px)`;
+            touchState.left = false;
+            touchState.right = false;
+            if (selectedRole === 'client' && isConnected) sendClientInputs();
+          }
+        }
+      };
+      mJoyBase.addEventListener('touchend', endJoyTouch, { passive: false });
+      mJoyBase.addEventListener('touchcancel', endJoyTouch, { passive: false });
+    }
+
+    function updateJoystick(touch) {
+      const rect = mJoyBase.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const maxDist = rect.width / 2 - 15;
+
+      if (dist > maxDist) {
+        dx = (dx / dist) * maxDist;
+        dy = (dy / dist) * maxDist;
+      }
+
+      mJoyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      touchState.left = dx < -12;
+      touchState.right = dx > 12;
+
+      if (selectedRole === 'client' && isConnected) {
+        sendClientInputs();
+      }
+    }
+
+    // Botões Táteis Mobile Extras
+    const mBtnJump = document.getElementById('m-btn-jump');
+    const mBtnSprint = document.getElementById('m-btn-sprint');
+    const mBtnFire = document.getElementById('m-btn-fire');
+
+    if (mBtnJump) {
+      mBtnJump.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!isConnected) return;
+        if (selectedRole === 'host') {
+          if (players[myId]) players[myId].jump();
+        } else {
+          sendToHost({ t: 'action', action: 'jump' });
+        }
+      }, { passive: false });
+    }
+
+    if (mBtnSprint) {
+      mBtnSprint.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        touchState.shift = !touchState.shift;
+        mBtnSprint.style.borderColor = touchState.shift ? '#ffd700' : '#d4a373';
+        if (selectedRole === 'client' && isConnected) sendClientInputs();
+      }, { passive: false });
+    }
+
+    if (mBtnFire) {
+      mBtnFire.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!isConnected) return;
+        if (selectedRole === 'host') {
+          if (players[myId]) players[myId].shootAttack();
+        } else {
+          sendToHost({ t: 'action', action: 'shoot' });
+        }
+      }, { passive: false });
+    }
+
+    let particles = [];
+    let shockwaves = [];
+
+    class Fighter {
+      constructor(id, x, y, color, name) {
+        this.id = id;
+        this.startX = x;
+        this.startY = y;
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.w = 32;
+        this.h = 48;
+        this.color = color;
+        this.name = name;
+
+        this.kills = 0;
+        this.damage = 0;
+        this.isGrounded = false;
+        this.jumpsLeft = 2;
+        this.facing = 1;
+
+        this.attackCooldown = 0;
+        this.invulnerableTimer = 0;
+        this.hitStun = 0;
+        this.lastAttackerId = null;
+      }
+
+      jump() {
+        if (this.hitStun > 0) return;
+        if (this.jumpsLeft > 0) {
+          this.vy = -12.5;
+          this.jumpsLeft--;
+          createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 8);
+        }
+      }
+
+      shootAttack() {
+        if (this.hitStun > 0 || this.attackCooldown > 0) return;
+        this.attackCooldown = 20;
+        triggerHitboxMulti(this, 65, 40, 18, 0.9);
+      }
+
+      respawn(isSurrender = false) {
+        this.damage = 0;
+        this.x = platform.x + Math.random() * (platform.w - 40);
+        this.y = 80;
+        this.vx = 0;
+        this.vy = 0;
+        this.jumpsLeft = 2;
+        this.hitStun = 0;
+        this.invulnerableTimer = 60;
+
+        if (isSurrender) {
+          if (this.lastAttackerId && players[this.lastAttackerId]) {
+            players[this.lastAttackerId].kills++;
+            broadcastKill(this.name + ' SE RENDEU PARA ' + players[this.lastAttackerId].name + '!');
+          } else {
+            broadcastKill(this.name + ' LEVANTOU A BANDEIRA BRANCA!');
+          }
+        } else {
+          if (this.lastAttackerId && players[this.lastAttackerId]) {
+            players[this.lastAttackerId].kills++;
+            broadcastKill(players[this.lastAttackerId].name + ' DERRUBOU ' + this.name + ' NO TIRO!');
+          } else {
+            broadcastKill(this.name + ' CAIU NO CANYON!');
+          }
+        }
+        this.lastAttackerId = null;
+      }
+
+      applyKnockback(dirX, dirY, basePower, scale, attackerId) {
+        if (this.invulnerableTimer > 0) return;
+        this.lastAttackerId = attackerId;
+        const totalPower = basePower + (this.damage * scale * 0.28);
+        this.vx = dirX * totalPower;
+        this.vy = dirY * totalPower * 0.7 - 2;
+        this.damage += Math.round(basePower * 1.2);
+        this.hitStun = Math.min(40, Math.round(totalPower * 0.9));
+        this.isGrounded = false;
+      }
+
+      updateMovement(isMovingLeft, isMovingRight, isAccelerating) {
+        if (this.invulnerableTimer > 0) this.invulnerableTimer--;
+        if (this.attackCooldown > 0) this.attackCooldown--;
+
+        if (this.hitStun > 0) {
+          this.hitStun--;
+          this.vx *= 0.96;
+          this.vy += 0.55;
+        } else {
+          this.vy += 0.55;
+
+          const speed = isAccelerating ? 8.0 : 4.8;
+          if (isMovingLeft) {
+            this.vx = -speed;
+            this.facing = -1;
+          } else if (isMovingRight) {
+            this.vx = speed;
+            this.facing = 1;
+          }
+
+          if (this.isGrounded) {
+            this.vx *= 0.82;
+            if (isAccelerating && (isMovingLeft || isMovingRight) && Math.random() < 0.3) {
+              createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 2);
+            }
+          } else {
+            this.vx *= 0.95;
+          }
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        const prevY = this.y - this.vy;
+        if (
+          this.vy >= 0 &&
+          prevY + this.h <= platform.y + 6 &&
+          this.y + this.h >= platform.y &&
+          this.x + this.w > platform.x &&
+          this.x < platform.x + platform.w
+        ) {
+          this.y = platform.y - this.h;
+          this.vy = 0;
+          this.isGrounded = true;
+          this.jumpsLeft = 2;
+        } else {
+          this.isGrounded = false;
+        }
+
+        if (this.y > canvas.height + 60 || this.x < -60 || this.x > canvas.width + 60) {
+          createExplosion(this.x, this.y, this.color);
+          this.respawn(false);
+        }
+      }
+    }
+
+    function surrender() {
+      if (!isConnected) return;
+      if (selectedRole === 'host') {
+        if (players[myId]) {
+          createSurrenderFlags(players[myId].x, players[myId].y);
+          players[myId].respawn(true);
+        }
+      } else {
+        sendToHost({ t: 'surrender' });
+      }
+    }
+
+    function createSurrenderFlags(x, y) {
+      for (let i = 0; i < 25; i++) {
+        particles.push({
+          x: x + 16,
+          y: y + 20,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - 3,
+          color: '#ffffff',
+          life: 35
+        });
+      }
+    }
+
+    function drawCowboyEntity(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+
+      if (p.invulnerableTimer > 0 && Math.floor(p.invulnerableTimer / 4) % 2 === 0) {
+        ctx.globalAlpha = 0.3;
+      }
+
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(8, 28, 6, 14);
+      ctx.fillRect(18, 28, 6, 14);
+
+      ctx.fillStyle = '#4a2810';
+      ctx.fillRect(p.facing === 1 ? 8 : 6, 42, 8, 6);
+      ctx.fillRect(p.facing === 1 ? 18 : 16, 42, 8, 6);
+
+      ctx.fillStyle = '#3a1e05';
+      ctx.fillRect(6, 26, 20, 3);
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(13, 26, 6, 3);
+
+      ctx.fillStyle = p.hitStun > 0 ? '#ffaa00' : p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = p.hitStun > 0 ? 20 : 6;
+      ctx.fillRect(6, 14, 20, 13);
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = '#b91c1c';
+      ctx.fillRect(10, 13, 12, 3);
+
+      ctx.fillStyle = '#fcd34d';
+      ctx.fillRect(9, 6, 14, 8);
+
+      ctx.fillStyle = '#000';
+      const eyeX = p.facing === 1 ? 18 : 11;
+      ctx.fillRect(eyeX, 8, 3, 3);
+
+      ctx.fillStyle = '#5c3317';
+      ctx.fillRect(9, -4, 14, 10);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(9, 4, 14, 2);
+      ctx.fillStyle = '#42240c';
+      ctx.fillRect(p.facing === 1 ? 3 : 1, 4, 28, 3);
+
+      ctx.fillStyle = '#4a2810';
+      const armX = p.facing === 1 ? 18 : 6;
+      ctx.fillRect(armX, 17, 8, 4);
+
+      ctx.fillStyle = '#9ca3af';
+      const gunX = p.facing === 1 ? armX + 7 : armX - 7;
+      ctx.fillRect(gunX, 17, 7 * p.facing, 3);
+      ctx.fillStyle = '#3a1e05';
+      ctx.fillRect(gunX, 19, 3, 4);
+
+      ctx.font = 'bold 10px Arial';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name, 16, -18);
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(p.damage + '%', 16, -8);
+
+      ctx.restore();
+    }
+
+    function startWesternMusic() {
+      westernMusic.currentTime = 0;
+      westernMusic.volume = 0.6;
+      westernMusic.play().catch(() => {});
+    }
+
+    function showKillNotification(text) {
+      killFeed.innerText = text;
+      killFeed.style.display = 'block';
+      setTimeout(() => {
+        killFeed.style.display = 'none';
+      }, 1800);
+    }
+
+    function broadcastKill(text) {
+      showKillNotification(text);
+      broadcast({ t: 'kill_feed', text: text });
+    }
+
+    function startP2P() {
+      const room = document.getElementById('room-input').value.trim() || 'SALOON-DUELO-99';
+      const hostPeerId = 'garena-west-' + room.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      overlayMsg.innerText = "Entrando na arena do Velho Oeste...";
+
+      if (selectedRole === 'host') {
+        myId = 'host';
+        peer = new Peer(hostPeerId, { debug: 1 });
+
+        peer.on('open', () => {
+          overlay.style.display = 'none';
+          isConnected = true;
+          roomStatus.innerText = `SALOON: ${room} (XERIFE / HOST)`;
+          netStatus.innerText = "P2P UDP: SALA ATIVA";
+          netStatus.style.color = "#00ff88";
+
+          players[myId] = new Fighter(myId, 280, 260, PALETTE[0], 'XERIFE (P1)');
+          myLabel.innerText = 'VOCÊ (XERIFE / P1)';
+          myLabel.style.color = PALETTE[0];
+
+          startWesternMusic();
+          startHostLoopTick();
+          updateUIState();
+        });
+
+        peer.on('connection', (conn) => {
+          const newPlayerId = conn.peer;
+          clientConnections[newPlayerId] = conn;
+          clientInputs[newPlayerId] = { left: false, right: false, shift: false };
+
+          const pCount = Object.keys(players).length;
+          const color = PALETTE[pCount % PALETTE.length];
+          const spawnX = platform.x + Math.random() * (platform.w - 50);
+
+          players[newPlayerId] = new Fighter(newPlayerId, spawnX, 260, color, `COWBOY ${pCount + 1}`);
+
+          conn.on('open', () => {
+            conn.send({
+              t: 'welcome',
+              assignedId: newPlayerId,
+              color: color,
+              name: players[newPlayerId].name
+            });
+            updateUIState();
+          });
+
+          conn.on('data', (packet) => {
+            handleHostIncomingData(newPlayerId, packet);
+          });
+
+          conn.on('close', () => {
+            delete clientConnections[newPlayerId];
+            delete clientInputs[newPlayerId];
+            if (players[newPlayerId]) {
+              broadcastKill(players[newPlayerId].name + ' FUGIU DO SALOON.');
+              delete players[newPlayerId];
+            }
+            updateUIState();
+          });
+        });
+
+        peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            alert('Esse Saloon já está ativo. Selecione "ENTRAR NO SALOON"!');
+            location.reload();
+          }
+        });
+
+      } else {
+        peer = new Peer({ debug: 1 });
+
+        peer.on('open', () => {
+          hostConn = peer.connect(hostPeerId, { reliable: false });
+
+          hostConn.on('open', () => {
+            isConnected = true;
+            overlay.style.display = 'none';
+            roomStatus.innerText = `SALOON: ${room} (PISTOLEIRO)`;
+            netStatus.innerText = "P2P UDP: CONECTADO AO SALOON";
+            netStatus.style.color = "#00ff88";
+
+            startWesternMusic();
+            startClientInputLoop();
+            startClientPingLoop();
+          });
+
+          hostConn.on('data', (packet) => {
+            handleClientIncomingData(packet);
+          });
+
+          hostConn.on('close', () => {
+            netStatus.innerText = "DESCONECTADO DO SALOON";
+            netStatus.style.color = "#ff3366";
+            pingDisplay.innerText = "PING: OFFLINE";
+          });
+        });
+
+        peer.on('error', () => {
+          overlayMsg.innerText = "Erro ao conectar. O Xerife já abriu o Saloon?";
+        });
+      }
+    }
+
+    function handleHostIncomingData(senderId, packet) {
+      if (packet.t === 'ping_req') {
+        if (clientConnections[senderId]) {
+          clientConnections[senderId].send({ t: 'ping_res', sentTime: packet.sentTime });
+        }
+        return;
+      }
+
+      if (packet.t === 'surrender') {
+        const p = players[senderId];
+        if (p) {
+          createSurrenderFlags(p.x, p.y);
+          p.respawn(true);
+        }
+        return;
+      }
+
+      if (packet.t === 'input') {
+        if (clientInputs[senderId]) {
+          clientInputs[senderId].left = packet.l;
+          clientInputs[senderId].right = packet.r;
+          clientInputs[senderId].shift = packet.s;
+        }
+      } else if (packet.t === 'action') {
+        const p = players[senderId];
+        if (p) {
+          if (packet.action === 'jump') p.jump();
+          if (packet.action === 'shoot') p.shootAttack();
+        }
+      }
+    }
+
+    function triggerHitboxMulti(attacker, rangeX, rangeY, basePower, scale) {
+      const hitX = attacker.facing === 1 ? attacker.x + attacker.w : attacker.x - rangeX;
+      const hitY = attacker.y + (attacker.h - rangeY) / 2;
+
+      triggerVFX(hitX + rangeX / 2, hitY + rangeY / 2, '#ffd700');
+      broadcast({
+        t: 'vfx',
+        x: hitX + rangeX / 2,
+        y: hitY + rangeY / 2,
+        color: '#ffd700'
+      });
+
+      for (const targetId in players) {
+        if (targetId === attacker.id) continue;
+        const target = players[targetId];
+
+        if (
+          hitX < target.x + target.w &&
+          hitX + rangeX > target.x &&
+          hitY < target.y + target.h &&
+          hitY + rangeY > target.y
+        ) {
+          createDust(target.x + target.w / 2, target.y + target.h / 2, '#fff', 15);
+          target.applyKnockback(attacker.facing, -0.65, basePower, scale, attacker.id);
+        }
+      }
+    }
+
+    function broadcast(data) {
+      for (const id in clientConnections) {
+        if (clientConnections[id].open) {
+          clientConnections[id].send(data);
+        }
+      }
+    }
+
+    function startHostLoopTick() {
+      setInterval(() => {
+        if (!isConnected) return;
+
+        const snapshot = [];
+        for (const id in players) {
+          const p = players[id];
+          snapshot.push({
+            id: p.id,
+            x: Math.round(p.x),
+            y: Math.round(p.y),
+            f: p.facing,
+            d: p.damage,
+            k: p.kills,
+            c: p.color,
+            n: p.name,
+            hs: p.hitStun,
+            inv: p.invulnerableTimer
+          });
+        }
+
+        broadcast({ t: 'state', players: snapshot });
+        updateUIState();
+      }, 50);
+    }
+
+    function handleClientIncomingData(packet) {
+      if (packet.t === 'welcome') {
+        myId = packet.assignedId;
+        myLabel.innerText = `${packet.name} (VOCÊ)`;
+        myLabel.style.color = packet.color;
+      } else if (packet.t === 'ping_res') {
+        const rtt = Math.round(performance.now() - packet.sentTime);
+        updatePingDisplay(rtt);
+      } else if (packet.t === 'kill_feed') {
+        showKillNotification(packet.text);
+      } else if (packet.t === 'vfx') {
+        triggerVFX(packet.x, packet.y, packet.color);
+      } else if (packet.t === 'state') {
+        packet.players.forEach((pData) => {
+          if (!playerTargets[pData.id]) {
+            playerTargets[pData.id] = {
+              x: pData.x,
+              y: pData.y,
+              color: pData.c,
+              name: pData.n
+            };
+          }
+          const pt = playerTargets[pData.id];
+          pt.tx = pData.x;
+          pt.ty = pData.y;
+          pt.facing = pData.f;
+          pt.damage = pData.d;
+          pt.kills = pData.k;
+          pt.color = pData.c;
+          pt.name = pData.n;
+          pt.hitStun = pData.hs;
+          pt.invulnerableTimer = pData.inv;
+        });
+
+        for (const id in playerTargets) {
+          if (!packet.players.some(p => p.id === id)) {
+            delete playerTargets[id];
+          }
+        }
+        updateClientUI(packet.players);
+      }
+    }
+
+    function sendToHost(data) {
+      if (hostConn && hostConn.open) {
+        hostConn.send(data);
+      }
+    }
+
+    function sendClientInputs() {
+      sendToHost({
+        t: 'input',
+        l: !!rawKeys[keybindings.moveLeft] || touchState.left,
+        r: !!rawKeys[keybindings.moveRight] || touchState.right,
+        s: !!rawKeys[keybindings.sprint] || touchState.shift
+      });
+    }
+
+    function startClientInputLoop() {
+      setInterval(() => {
+        if (!isConnected) return;
+        sendClientInputs();
+      }, 33);
+    }
+
+    function startClientPingLoop() {
+      setInterval(() => {
+        if (isConnected) {
+          sendToHost({ t: 'ping_req', sentTime: performance.now() });
+        }
+      }, 1000);
+    }
+
+    function updatePingDisplay(ms) {
+      pingDisplay.innerText = `PING: ${ms} ms`;
+      if (ms < 50) pingDisplay.style.color = "#00ff88";
+      else if (ms < 120) pingDisplay.style.color = "#ffd700";
+      else pingDisplay.style.color = "#ff3366";
+    }
+
+    function triggerVFX(x, y, color) {
+      shockwaves.push({
+        x: x,
+        y: y,
+        radius: 30,
+        color: color,
+        life: 8
+      });
+    }
+
+    function createDust(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 7,
+          vy: (Math.random() - 0.5) * 7,
+          color: color,
+          life: 14
+        });
+      }
+    }
+
+    function createExplosion(x, y, color) {
+      for (let i = 0; i < 40; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 20,
+          vy: (Math.random() - 0.5) * 20,
+          color: color,
+          life: 30
+        });
+      }
+    }
+
+    function updateUIState() {
+      const pList = Object.values(players);
+      playerCount.innerText = `COWBOYS NO DUELO: ${pList.length}`;
+
+      if (players[myId]) {
+        myDmg.innerText = players[myId].damage + '%';
+      }
+
+      scoreboard.innerHTML = pList
+        .map(p => `<span class="score-item" style="color:${p.color}">${p.name}: <b>${p.kills} ABATES</b></span>`)
+        .join(' ');
+    }
+
+    function updateClientUI(playerList) {
+      playerCount.innerText = `COWBOYS NO DUELO: ${playerList.length}`;
+
+      const me = playerList.find(p => p.id === myId);
+      if (me) {
+        myDmg.innerText = me.d + '%';
+      }
+
+      scoreboard.innerHTML = playerList
+        .map(p => `<span class="score-item" style="color:${p.c}">${p.n}: <b>${p.k} ABATES</b></span>`)
+        .join(' ');
+    }
+
+    function loop() {
+      if (isConnected) {
+        if (selectedRole === 'host') {
+          if (players[myId]) {
+            const shiftActive = !!rawKeys[keybindings.sprint] || touchState.shift;
+            const moveLeftActive = !!rawKeys[keybindings.moveLeft] || touchState.left;
+            const moveRightActive = !!rawKeys[keybindings.moveRight] || touchState.right;
+            players[myId].updateMovement(moveLeftActive, moveRightActive, shiftActive);
+          }
+          for (const cId in clientInputs) {
+            if (players[cId]) {
+              players[cId].updateMovement(clientInputs[cId].left, clientInputs[cId].right, clientInputs[cId].shift);
+            }
+          }
+        } else {
+          for (const id in playerTargets) {
+            const pt = playerTargets[id];
+            if (pt.tx !== undefined) {
+              pt.x += (pt.tx - pt.x) * 0.35;
+              pt.y += (pt.ty - pt.y) * 0.35;
+            }
+          }
+        }
+      }
+
+      const theme = THEMES[currentTheme];
+
+      ctx.fillStyle = theme.bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      canvas.style.borderColor = theme.border;
+
+      ctx.strokeStyle = theme.deadBorder;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(30, 20, canvas.width - 60, canvas.height - 30);
+
+      ctx.fillStyle = theme.platFill;
+      ctx.strokeStyle = theme.platBorder;
+      ctx.lineWidth = 3;
+      ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
+      ctx.strokeRect(platform.x, platform.y, platform.w, platform.h);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      for (let i = platform.x + 40; i < platform.x + platform.w; i += 50) {
+        ctx.fillRect(i, platform.y, 2, platform.h);
+      }
+      ctx.fillStyle = theme.platAcc;
+      ctx.fillRect(platform.x + 6, platform.y + 4, platform.w - 12, 2);
+
+      if (selectedRole === 'host') {
+        for (const id in players) {
+          drawCowboyEntity(players[id]);
+        }
+      } else {
+        for (const id in playerTargets) {
+          drawCowboyEntity(playerTargets[id]);
+        }
+      }
+
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        ctx.strokeStyle = sw.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        sw.life--;
+        sw.radius += 3;
+        if (sw.life <= 0) shockwaves.splice(i, 1);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.life--;
+        ctx.fillStyle = pt.color;
+        ctx.fillRect(pt.x, pt.y, 3, 3);
+        if (pt.life <= 0) particles.splice(i, 1);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    updateControlBadges();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Gravity Ring: Wild West Cowboys Realtime FFA + Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Gravity Ring: Wild West Cowboys Realtime FFA + Mobile Immersive</title>
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
@@ -15,18 +15,19 @@
       -webkit-user-select: none;
       -webkit-touch-callout: none;
     }
-    body {
+    html, body {
       background: #090806;
       color: #fff;
       font-family: 'Arial Black', Impact, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      min-height: 100vh;
-      overflow-x: hidden;
-      padding-top: 10px;
       touch-action: none;
+      position: fixed;
     }
     .top-bar {
       display: flex;
@@ -34,31 +35,32 @@
       align-items: center;
       width: 920px;
       max-width: 100%;
-      padding: 0 10px;
-      margin-bottom: 6px;
+      padding: 4px 10px;
+      margin-bottom: 2px;
+      flex-shrink: 0;
     }
     .room-tag {
-      font-size: 13px;
+      font-size: 12px;
       color: #d4a373;
       letter-spacing: 1px;
     }
     .telemetry {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .ping-badge {
       font-family: monospace;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
-      padding: 3px 8px;
+      padding: 2px 6px;
       border-radius: 4px;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #00ff88;
     }
     .net-tag {
-      font-size: 13px;
+      font-size: 12px;
       color: #00ff88;
       font-family: monospace;
       font-weight: bold;
@@ -68,9 +70,9 @@
       color: #ffd700;
       border: 1px solid #d4a373;
       font-family: inherit;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: bold;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 4px;
       cursor: pointer;
       text-transform: uppercase;
@@ -92,20 +94,21 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       background: rgba(43, 29, 14, 0.4);
       border: 1px solid rgba(212, 163, 115, 0.4);
-      padding: 6px 16px;
-      border-radius: 8px;
-      margin-bottom: 8px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      margin-bottom: 4px;
       width: 920px;
       max-width: 100%;
       flex-wrap: wrap;
+      flex-shrink: 0;
     }
     .score-item {
-      font-size: 13px;
+      font-size: 12px;
       letter-spacing: 1px;
-      padding: 2px 8px;
+      padding: 2px 6px;
       border-radius: 4px;
       background: rgba(0, 0, 0, 0.5);
     }
@@ -116,29 +119,30 @@
       width: 920px;
       max-width: 100%;
       padding: 0 10px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      flex-shrink: 0;
     }
     .my-card {
       background: rgba(43, 29, 14, 0.5);
       border: 1px solid rgba(212, 163, 115, 0.4);
-      padding: 6px 16px;
-      border-radius: 8px;
+      padding: 4px 12px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 12px;
     }
     .my-title {
-      font-size: 14px;
+      font-size: 12px;
       letter-spacing: 1px;
     }
     .damage-display {
-      font-size: 32px;
+      font-size: 26px;
       font-weight: 900;
       line-height: 1;
       font-family: monospace;
     }
     .players-count {
-      font-size: 13px;
+      font-size: 12px;
       color: #d4a373;
       letter-spacing: 1px;
     }
@@ -146,30 +150,34 @@
       position: relative;
       width: 920px;
       max-width: 100%;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
     }
     canvas {
       background: #14110d;
       border: 2px solid #d4a373;
-      border-radius: 12px;
+      border-radius: 10px;
       box-shadow: 0 0 35px rgba(212, 163, 115, 0.2);
-      width: 100%;
-      height: auto;
+      max-width: 100%;
+      max-height: 52vh;
       display: block;
     }
     .controls-hint {
-      margin-top: 6px;
-      font-size: 11px;
+      margin-top: 4px;
+      font-size: 10px;
       color: #a89f91;
       font-family: sans-serif;
       display: flex;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
+      flex-shrink: 0;
     }
     .key-badge {
       background: #2b1d0e;
       color: #ffd700;
-      padding: 2px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
       border: 1px solid #d4a373;
       font-family: monospace;
@@ -177,10 +185,10 @@
     }
     #kill-feed {
       position: absolute;
-      top: 14px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 16px;
+      font-size: 15px;
       color: #ffd700;
       letter-spacing: 1px;
       text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
@@ -197,40 +205,42 @@
       flex-direction: column;
       background: rgba(20, 16, 12, 0.98);
       border: 3px solid #d4a373;
-      padding: 25px 35px;
+      padding: 20px 30px;
       border-radius: 12px;
       box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
       z-index: 30;
-      width: 440px;
+      width: 420px;
       max-width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     #custom-modal h2 {
-      font-size: 22px;
+      font-size: 20px;
       color: #d4a373;
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       letter-spacing: 1px;
     }
     .custom-section {
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
     .custom-section label {
-      font-size: 12px;
+      font-size: 11px;
       color: #ffd700;
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .theme-buttons {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     .theme-btn {
       flex: 1;
       background: #2b1d0e;
       color: #ccc;
       border: 1px solid #555;
-      padding: 6px;
-      font-size: 11px;
+      padding: 5px;
+      font-size: 10px;
       font-weight: bold;
       border-radius: 4px;
       cursor: pointer;
@@ -244,27 +254,27 @@
     .keybind-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
     }
     .keybind-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: rgba(255, 255, 255, 0.05);
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
     }
     .keybind-btn {
       background: #14110d;
       border: 1px solid #d4a373;
       color: #ffd700;
       font-family: monospace;
-      font-size: 11px;
-      padding: 2px 6px;
+      font-size: 10px;
+      padding: 2px 5px;
       border-radius: 4px;
       cursor: pointer;
-      min-width: 50px;
+      min-width: 45px;
       text-align: center;
     }
     .keybind-btn.recording {
@@ -273,10 +283,10 @@
       color: #fff;
     }
     .ad-web-container {
-      margin-top: 10px;
+      margin-top: 4px;
       width: 728px;
       max-width: 100%;
-      min-height: 90px;
+      min-height: 50px;
       background: rgba(20, 16, 12, 0.9);
       border: 1px dashed rgba(212, 163, 115, 0.5);
       border-radius: 6px;
@@ -286,13 +296,14 @@
       justify-content: center;
       position: relative;
       overflow: hidden;
-      padding: 4px 0;
+      padding: 2px 0;
+      flex-shrink: 0;
     }
     .ad-label {
       position: absolute;
       top: 2px;
       left: 6px;
-      font-size: 9px;
+      font-size: 8px;
       color: #888;
       font-family: sans-serif;
       text-transform: uppercase;
@@ -305,42 +316,42 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: rgba(18, 14, 10, 0.97);
+      background: rgba(18, 14, 10, 0.98);
       border: 3px solid #d4a373;
-      padding: 35px 25px;
+      padding: 20px;
       z-index: 20;
       overflow-y: auto;
     }
     #overlay h1 {
-      font-size: 32px;
+      font-size: 28px;
       color: #d4a373;
-      text-shadow: 0 0 25px rgba(212, 163, 115, 0.8);
-      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(212, 163, 115, 0.8);
+      margin-bottom: 6px;
       text-align: center;
     }
     #overlay p {
-      font-size: 14px;
+      font-size: 13px;
       color: #ccc;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
       font-family: sans-serif;
       text-align: center;
     }
     .role-select {
       display: flex;
-      gap: 15px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 15px;
       flex-wrap: wrap;
       justify-content: center;
     }
     .role-btn {
       background: #2b1d0e;
       border: 2px solid #555;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
       color: #fff;
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12px;
     }
     .role-btn.active {
       border-color: #ffd700;
@@ -349,16 +360,16 @@
     }
     .input-row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
       justify-content: center;
     }
     input[type="text"] {
       background: #2b1d0e;
       border: 1px solid #d4a373;
-      padding: 10px 14px;
+      padding: 8px 12px;
       color: #fff;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       border-radius: 6px;
       outline: none;
@@ -368,9 +379,9 @@
       color: #1a1105;
       border: none;
       font-family: inherit;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: bold;
-      padding: 10px 22px;
+      padding: 8px 18px;
       border-radius: 6px;
       cursor: pointer;
       text-transform: uppercase;
@@ -381,7 +392,7 @@
       transform: scale(1.04);
     }
 
-    /* CONTROLES MOBILE TARTARUGA / VIRTUAIS */
+    /* CONTROLES TÁTEIS MOBILE */
     #mobile-controls {
       display: none;
       position: absolute;
@@ -391,22 +402,22 @@
     }
     .m-joy-base {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
-      width: 110px;
-      height: 110px;
+      bottom: 12px;
+      left: 12px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
-      background: rgba(43, 29, 14, 0.4);
-      border: 2px solid rgba(212, 163, 115, 0.4);
+      background: rgba(43, 29, 14, 0.45);
+      border: 2px solid rgba(212, 163, 115, 0.5);
       pointer-events: auto;
       touch-action: none;
     }
     .m-joy-stick {
       position: absolute;
-      top: 32px;
-      left: 32px;
-      width: 42px;
-      height: 42px;
+      top: 28px;
+      left: 28px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: #d4a373;
       box-shadow: 0 0 10px #ffd700;
@@ -414,21 +425,21 @@
     }
     .m-action-buttons {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
+      bottom: 12px;
+      right: 12px;
       display: flex;
-      gap: 10px;
+      gap: 8px;
       pointer-events: auto;
     }
     .m-btn {
-      background: rgba(43, 29, 14, 0.7);
+      background: rgba(43, 29, 14, 0.75);
       border: 2px solid #d4a373;
       color: #ffd700;
       font-family: inherit;
       font-weight: bold;
-      font-size: 12px;
-      width: 56px;
-      height: 56px;
+      font-size: 11px;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -444,11 +455,11 @@
       background: #7a1c1c;
       border-color: #ff4d4d;
       color: #fff;
-      width: 68px;
-      height: 68px;
+      width: 60px;
+      height: 60px;
     }
 
-    @media (max-pointer: coarse), (max-width: 768px) {
+    @media (max-pointer: coarse), (max-width: 900px) {
       #mobile-controls {
         display: block;
       }
@@ -488,7 +499,7 @@
     <div id="kill-feed"></div>
     <canvas id="arena" width="920" height="460"></canvas>
     
-    <!-- CONTROLES TÁTEIS PARA CELULAR / TABLET -->
+    <!-- CONTROLES TÁTEIS MOBILE -->
     <div id="mobile-controls">
       <div class="m-joy-base" id="m-joy-base">
         <div class="m-joy-stick" id="m-joy-stick"></div>
@@ -514,7 +525,7 @@
     <!-- BEGIN AADS AD UNIT 2454775 -->
     <div id="frame" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
       <iframe data-aa='2454775' src='//acceptable.a-ads.com/2454775/?size=Adaptive'
-              style='border:0; padding:0; width:100%; height:auto; min-height:90px; overflow:hidden; display: block; margin: auto;'></iframe>
+              style='border:0; padding:0; width:100%; height:auto; min-height:50px; overflow:hidden; display: block; margin: auto;'></iframe>
     </div>
     <!-- END AADS AD UNIT 2454775 -->
   </div>
@@ -562,7 +573,7 @@
 
   <div id="overlay">
     <h1>WILD WEST: COWBOY 1v1</h1>
-    <p id="overlay-msg">Entre com 2 ou mais pistoleiros no mesmo Saloon!</p>
+    <p id="overlay-msg">Gire o celular na horizontal e entre com os pistoleiros no Saloon!</p>
     
     <div class="role-select">
       <button type="button" class="role-btn active" id="btn-host" onclick="selectRole('host')">CRIAR SALA (XERIFE / HOST)</button>
@@ -790,15 +801,14 @@
 
       mJoyStick.style.transform = `translate(${dx}px, ${dy}px)`;
 
-      touchState.left = dx < -12;
-      touchState.right = dx > 12;
+      touchState.left = dx < -10;
+      touchState.right = dx > 10;
 
       if (selectedRole === 'client' && isConnected) {
         sendClientInputs();
       }
     }
 
-    // Botões Táteis Mobile Extras
     const mBtnJump = document.getElementById('m-btn-jump');
     const mBtnSprint = document.getElementById('m-btn-sprint');
     const mBtnFire = document.getElementById('m-btn-fire');
@@ -1084,7 +1094,23 @@
       broadcast({ t: 'kill_feed', text: text });
     }
 
+    // FUNÇÕES DE TELA CHEIA E ORIENTAÇÃO FORÇADA
+    function requestImmersiveMode() {
+      // Tenta travar em modo paisagem (deitado) se o navegador suportar
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+      // Tenta ocultar a barra do navegador (Tela Cheia)
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      }
+    }
+
     function startP2P() {
+      requestImmersiveMode(); // Ativa modo tela cheia e paisagem ao conectar
+
       const room = document.getElementById('room-input').value.trim() || 'SALOON-DUELO-99';
       const hostPeerId = 'garena-west-' + room.toLowerCase().replace(/[^a-z0-9]/g, '-');
       overlayMsg.innerText = "Entrando na arena do Velho Oeste...";

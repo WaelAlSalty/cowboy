@@ -841,6 +841,8 @@
             mJoyStick.style.transform = `translate(0px, 0px)`;
             touchState.left = false;
             touchState.right = false;
+            touchState.up = false;
+            touchState.down = false;
             if (selectedRole === 'client' && isConnected) sendClientInputs();
           }
         }
@@ -867,6 +869,8 @@
 
       touchState.left = dx < -10;
       touchState.right = dx > 10;
+      touchState.up = dy < -10;
+      touchState.down = dy > 10;
 
       if (selectedRole === 'client' && isConnected) {
         sendClientInputs();

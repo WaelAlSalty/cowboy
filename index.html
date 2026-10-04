@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Gravity Ring: Wild West Cowboys Realtime FFA + Mobile Immersive</title>
 
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+  <script>
+    if (typeof Peer === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
+  </script>
+  <script>
+    if (typeof Peer === 'undefined') document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -540,6 +546,7 @@
 
   <div class="controls-hint" id="controls-hint-bar">
     <span>Mover: <span class="key-badge" id="badge-left">A</span>/<span class="key-badge" id="badge-right">D</span></span>
+    <span>Fundo/Frente: <span class="key-badge" id="badge-up">W</span>/<span class="key-badge" id="badge-down">S</span></span>
     <span>Pulo: <span class="key-badge" id="badge-jump">Space</span></span>
     <span>Acelerar: <span class="key-badge" id="badge-shift">Shift</span></span>
     <span>Tiro: <span class="key-badge" id="badge-shoot">Enter</span></span>
@@ -568,6 +575,14 @@
         <div class="keybind-row">
           <span>Direita:</span>
           <button type="button" class="keybind-btn" id="kbtn-moveRight" onclick="recordKey('moveRight')">KeyD</button>
+        </div>
+        <div class="keybind-row">
+          <span>Ir pro fundo:</span>
+          <button type="button" class="keybind-btn" id="kbtn-moveUp" onclick="recordKey('moveUp')">KeyW</button>
+        </div>
+        <div class="keybind-row">
+          <span>Vir pra frente:</span>
+          <button type="button" class="keybind-btn" id="kbtn-moveDown" onclick="recordKey('moveDown')">KeyS</button>
         </div>
         <div class="keybind-row">
           <span>Pular:</span>
@@ -620,13 +635,33 @@
 
     setTimeout(updateFullscreenButton, 0);
 
-    const platform = { x: 210, y: 325, w: 500, h: 24 };
+    // PLATAFORMA 3D: x = largura, y = altura (topo), w = comprimento, h = espessura, d = profundidade (chão)
+    const platform = { x: 130, y: 325, w: 660, h: 30, d: 150 };
+
+    // Projeção: mesmo ângulo lateral de antes, mas com profundidade (z).
+    // Quanto mais ao fundo (z maior), mais alto na tela e levemente menor.
+    const CAM_X = canvas.width / 2;
+    const DEPTH_LIFT = 0.5;
+    const DEPTH_SHRINK = 0.2;
+    const HIT_DEPTH_TOLERANCE = 38;
+
+    function proj(x, y, z) {
+      const t = z / platform.d;
+      const s = 1 - DEPTH_SHRINK * t;
+      return {
+        x: CAM_X + (x - CAM_X) * s,
+        y: platform.y + (y - platform.y) * s - z * DEPTH_LIFT,
+        s: s
+      };
+    }
 
     const PALETTE = ['#e63946', '#00e5ff', '#38b000', '#ffd700', '#c77dff', '#fb8500', '#06d6a0'];
 
     let keybindings = {
       moveLeft: 'KeyA',
       moveRight: 'KeyD',
+      moveUp: 'KeyW',
+      moveDown: 'KeyS',
       jump: 'Space',
       sprint: 'ShiftLeft',
       shoot: 'Enter'
@@ -640,6 +675,7 @@
         bg: '#14110d',
         border: '#d4a373',
         platFill: '#3a2312',
+        platTop: '#6b4423',
         platBorder: '#d4a373',
         platAcc: '#ffd700',
         deadBorder: 'rgba(212, 163, 115, 0.25)'
@@ -648,6 +684,7 @@
         bg: '#080a14',
         border: '#00e5ff',
         platFill: '#14182b',
+        platTop: '#222a4d',
         platBorder: '#00e5ff',
         platAcc: '#ff0055',
         deadBorder: 'rgba(0, 229, 255, 0.25)'
@@ -656,6 +693,7 @@
         bg: '#180707',
         border: '#ff3300',
         platFill: '#2b0c0c',
+        platTop: '#52190f',
         platBorder: '#ff5500',
         platAcc: '#ffcc00',
         deadBorder: 'rgba(255, 51, 0, 0.35)'
@@ -692,6 +730,8 @@
     function updateControlBadges() {
       document.getElementById('badge-left').innerText = keybindings.moveLeft.replace('Key', '');
       document.getElementById('badge-right').innerText = keybindings.moveRight.replace('Key', '');
+      document.getElementById('badge-up').innerText = keybindings.moveUp.replace('Key', '');
+      document.getElementById('badge-down').innerText = keybindings.moveDown.replace('Key', '');
       document.getElementById('badge-jump').innerText = keybindings.jump;
       document.getElementById('badge-shift').innerText = keybindings.sprint.replace('Left', '').replace('Right', '');
       document.getElementById('badge-shoot').innerText = keybindings.shoot;
@@ -757,14 +797,20 @@
     window.addEventListener('keyup', (e) => {
       rawKeys[e.code] = false;
       if (selectedRole === 'client' && isConnected) {
-        if (e.code === keybindings.moveLeft || e.code === keybindings.moveRight || e.code === keybindings.sprint) {
+        if (
+          e.code === keybindings.moveLeft ||
+          e.code === keybindings.moveRight ||
+          e.code === keybindings.moveUp ||
+          e.code === keybindings.moveDown ||
+          e.code === keybindings.sprint
+        ) {
           sendClientInputs();
         }
       }
     });
 
-    // SISTEMA DE CONTROLES MOBILE TOUCH (JOYSTICK E BOTÕES)
-    const touchState = { left: false, right: false, shift: false };
+    // SISTEMA DE CONTROLES MOBILE TOUCH (JOYSTICK E BOTÕES) - inalterado
+    const touchState = { left: false, right: false, up: false, down: false, shift: false };
     const mJoyBase = document.getElementById('m-joy-base');
     const mJoyStick = document.getElementById('m-joy-stick');
     let mTouchId = null;
@@ -868,12 +914,13 @@
     let shockwaves = [];
 
     class Fighter {
-      constructor(id, x, y, color, name) {
+      constructor(id, x, y, color, name, z) {
         this.id = id;
         this.startX = x;
         this.startY = y;
         this.x = x;
         this.y = y;
+        this.z = (z === undefined) ? platform.d / 2 : z;
         this.vx = 0;
         this.vy = 0;
         this.w = 32;
@@ -898,7 +945,7 @@
         if (this.jumpsLeft > 0) {
           this.vy = -12.5;
           this.jumpsLeft--;
-          createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 8);
+          createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 8, this.z);
         }
       }
 
@@ -912,6 +959,7 @@
         this.damage = 0;
         this.x = platform.x + Math.random() * (platform.w - 40);
         this.y = 80;
+        this.z = platform.d * (0.25 + Math.random() * 0.5);
         this.vx = 0;
         this.vy = 0;
         this.jumpsLeft = 2;
@@ -947,7 +995,7 @@
         this.isGrounded = false;
       }
 
-      updateMovement(isMovingLeft, isMovingRight, isAccelerating) {
+      updateMovement(isMovingLeft, isMovingRight, isAccelerating, isMovingBack, isMovingFront) {
         if (this.invulnerableTimer > 0) this.invulnerableTimer--;
         if (this.attackCooldown > 0) this.attackCooldown--;
 
@@ -967,10 +1015,16 @@
             this.facing = 1;
           }
 
+          // Movimento em profundidade (W/S)
+          const zSpeed = isAccelerating ? 5.0 : 3.2;
+          if (isMovingBack) this.z += zSpeed;
+          if (isMovingFront) this.z -= zSpeed;
+          this.z = Math.max(-30, Math.min(platform.d + 30, this.z));
+
           if (this.isGrounded) {
             this.vx *= 0.82;
-            if (isAccelerating && (isMovingLeft || isMovingRight) && Math.random() < 0.3) {
-              createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 2);
+            if (isAccelerating && (isMovingLeft || isMovingRight || isMovingBack || isMovingFront) && Math.random() < 0.3) {
+              createDust(this.x + this.w / 2, this.y + this.h, '#d4a373', 2, this.z);
             }
           } else {
             this.vx *= 0.95;
@@ -986,7 +1040,9 @@
           prevY + this.h <= platform.y + 6 &&
           this.y + this.h >= platform.y &&
           this.x + this.w > platform.x &&
-          this.x < platform.x + platform.w
+          this.x < platform.x + platform.w &&
+          this.z >= 0 &&
+          this.z <= platform.d
         ) {
           this.y = platform.y - this.h;
           this.vy = 0;
@@ -997,7 +1053,7 @@
         }
 
         if (this.y > canvas.height + 60 || this.x < -60 || this.x > canvas.width + 60) {
-          createExplosion(this.x, this.y, this.color);
+          createExplosion(this.x, Math.min(this.y, canvas.height), this.color, this.z);
           this.respawn(false);
         }
       }
@@ -1007,7 +1063,7 @@
       if (!isConnected) return;
       if (selectedRole === 'host') {
         if (players[myId]) {
-          createSurrenderFlags(players[myId].x, players[myId].y);
+          createSurrenderFlags(players[myId].x, players[myId].y, players[myId].z);
           players[myId].respawn(true);
         }
       } else {
@@ -1015,11 +1071,12 @@
       }
     }
 
-    function createSurrenderFlags(x, y) {
+    function createSurrenderFlags(x, y, z) {
+      const sp = proj(x + 16, y + 20, z === undefined ? platform.d / 2 : z);
       for (let i = 0; i < 25; i++) {
         particles.push({
-          x: x + 16,
-          y: y + 20,
+          x: sp.x,
+          y: sp.y,
           vx: (Math.random() - 0.5) * 12,
           vy: (Math.random() - 0.5) * 12 - 3,
           color: '#ffffff',
@@ -1028,9 +1085,112 @@
       }
     }
 
+    // Sombra no chão da plataforma (ajuda a entender a profundidade)
+    function drawShadow(p) {
+      const z = (p.z === undefined) ? platform.d / 2 : p.z;
+      const cx = p.x + 16;
+      if (cx < platform.x || cx > platform.x + platform.w || z < 0 || z > platform.d) return;
+      const height = platform.y - (p.y + 48);
+      if (height < -8) return;
+      const sp = proj(cx, platform.y, z);
+      const shrink = 1 - Math.min(height, 300) / 600;
+      ctx.fillStyle = `rgba(0, 0, 0, ${Math.max(0.12, 0.45 - height / 600)})`;
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, 17 * sp.s * shrink, 5 * sp.s * shrink, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawPlatform3D(theme) {
+      const P = platform;
+      const x0 = P.x;
+      const x1 = P.x + P.w;
+
+      const a = proj(x0, P.y, 0);
+      const b = proj(x1, P.y, 0);
+      const c = proj(x1, P.y, P.d);
+      const d = proj(x0, P.y, P.d);
+
+      // Face superior (o chão onde dá pra andar)
+      ctx.fillStyle = theme.platTop;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tábuas (linhas ao longo da profundidade) e juntas (linhas transversais)
+      ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+      ctx.lineWidth = 1.5;
+      for (let x = x0 + 40; x < x1; x += 55) {
+        const f = proj(x, P.y, 0);
+        const bk = proj(x, P.y, P.d);
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(bk.x, bk.y);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      for (let z = 30; z < P.d; z += 30) {
+        const l = proj(x0, P.y, z);
+        const r = proj(x1, P.y, z);
+        ctx.beginPath();
+        ctx.moveTo(l.x, l.y);
+        ctx.lineTo(r.x, r.y);
+        ctx.stroke();
+      }
+
+      // Contorno do chão
+      ctx.strokeStyle = theme.platBorder;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Face frontal (espessura)
+      const a2 = proj(x0, P.y + P.h, 0);
+      const b2 = proj(x1, P.y + P.h, 0);
+      ctx.fillStyle = theme.platFill;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(b2.x, b2.y);
+      ctx.lineTo(a2.x, a2.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      for (let x = x0 + 40; x < x1; x += 50) {
+        ctx.fillRect(x, P.y, 2, P.h);
+      }
+
+      ctx.strokeStyle = theme.platBorder;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(b2.x, b2.y);
+      ctx.lineTo(a2.x, a2.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = theme.platAcc;
+      ctx.fillRect(x0 + 6, P.y + 5, P.w - 12, 2);
+    }
+
     function drawCowboyEntity(p) {
+      const z = (p.z === undefined) ? platform.d / 2 : p.z;
+      const feet = proj(p.x + 16, p.y + 48, z);
+
       ctx.save();
-      ctx.translate(p.x, p.y);
+      ctx.translate(feet.x, feet.y);
+      ctx.scale(feet.s, feet.s);
+      ctx.translate(-16, -48);
 
       if (p.invulnerableTimer > 0 && Math.floor(p.invulnerableTimer / 4) % 2 === 0) {
         ctx.globalAlpha = 0.3;
@@ -1190,6 +1350,11 @@
     }
 
     function startP2P() {
+      if (typeof Peer === 'undefined') {
+        overlayMsg.innerText = "Não foi possível carregar a biblioteca PeerJS. Verifique sua internet e recarregue a página.";
+        return;
+      }
+
       requestImmersiveMode();
 
       const room = document.getElementById('room-input').value.trim() || 'SALOON-DUELO-99';
@@ -1209,7 +1374,7 @@
           netStatus.innerText = "P2P UDP: SALA ATIVA";
           netStatus.style.color = "#00ff88";
 
-          players[myId] = new Fighter(myId, 280, 260, PALETTE[0], 'XERIFE (P1)');
+          players[myId] = new Fighter(myId, 280, 260, PALETTE[0], 'XERIFE (P1)', platform.d / 2);
           myLabel.innerText = 'VOCÊ (XERIFE / P1)';
           myLabel.style.color = PALETTE[0];
 
@@ -1221,13 +1386,14 @@
         peer.on('connection', (conn) => {
           const newPlayerId = conn.peer;
           clientConnections[newPlayerId] = conn;
-          clientInputs[newPlayerId] = { left: false, right: false, shift: false };
+          clientInputs[newPlayerId] = { left: false, right: false, shift: false, up: false, down: false };
 
           const pCount = Object.keys(players).length;
           const color = PALETTE[pCount % PALETTE.length];
           const spawnX = platform.x + Math.random() * (platform.w - 50);
+          const spawnZ = platform.d * (0.25 + Math.random() * 0.5);
 
-          players[newPlayerId] = new Fighter(newPlayerId, spawnX, 260, color, `COWBOY ${pCount + 1}`);
+          players[newPlayerId] = new Fighter(newPlayerId, spawnX, 260, color, `COWBOY ${pCount + 1}`, spawnZ);
 
           conn.on('open', () => {
             conn.send({
@@ -1309,7 +1475,7 @@
       if (packet.t === 'surrender') {
         const p = players[senderId];
         if (p) {
-          createSurrenderFlags(p.x, p.y);
+          createSurrenderFlags(p.x, p.y, p.z);
           p.respawn(true);
         }
         return;
@@ -1320,6 +1486,8 @@
           clientInputs[senderId].left = packet.l;
           clientInputs[senderId].right = packet.r;
           clientInputs[senderId].shift = packet.s;
+          clientInputs[senderId].up = !!packet.u;
+          clientInputs[senderId].down = !!packet.d;
         }
       } else if (packet.t === 'action') {
         const p = players[senderId];
@@ -1334,11 +1502,12 @@
       const hitX = attacker.facing === 1 ? attacker.x + attacker.w : attacker.x - rangeX;
       const hitY = attacker.y + (attacker.h - rangeY) / 2;
 
-      triggerVFX(hitX + rangeX / 2, hitY + rangeY / 2, '#ffd700');
+      const sp = proj(hitX + rangeX / 2, hitY + rangeY / 2, attacker.z);
+      triggerVFX(sp.x, sp.y, '#ffd700');
       broadcast({
         t: 'vfx',
-        x: hitX + rangeX / 2,
-        y: hitY + rangeY / 2,
+        x: sp.x,
+        y: sp.y,
         color: '#ffd700'
       });
 
@@ -1346,13 +1515,16 @@
         if (targetId === attacker.id) continue;
         const target = players[targetId];
 
+        // Só acerta quem está na mesma "faixa" de profundidade
+        if (Math.abs(target.z - attacker.z) > HIT_DEPTH_TOLERANCE) continue;
+
         if (
           hitX < target.x + target.w &&
           hitX + rangeX > target.x &&
           hitY < target.y + target.h &&
           hitY + rangeY > target.y
         ) {
-          createDust(target.x + target.w / 2, target.y + target.h / 2, '#fff', 15);
+          createDust(target.x + target.w / 2, target.y + target.h / 2, '#fff', 15, target.z);
           target.applyKnockback(attacker.facing, -0.65, basePower, scale, attacker.id);
         }
       }
@@ -1377,6 +1549,7 @@
             id: p.id,
             x: Math.round(p.x),
             y: Math.round(p.y),
+            z: Math.round(p.z),
             f: p.facing,
             d: p.damage,
             k: p.kills,
@@ -1410,6 +1583,7 @@
             playerTargets[pData.id] = {
               x: pData.x,
               y: pData.y,
+              z: pData.z,
               color: pData.c,
               name: pData.n
             };
@@ -1417,6 +1591,7 @@
           const pt = playerTargets[pData.id];
           pt.tx = pData.x;
           pt.ty = pData.y;
+          pt.tz = pData.z;
           pt.facing = pData.f;
           pt.damage = pData.d;
           pt.kills = pData.k;
@@ -1446,7 +1621,9 @@
         t: 'input',
         l: !!rawKeys[keybindings.moveLeft] || touchState.left,
         r: !!rawKeys[keybindings.moveRight] || touchState.right,
-        s: !!rawKeys[keybindings.sprint] || touchState.shift
+        s: !!rawKeys[keybindings.sprint] || touchState.shift,
+        u: !!rawKeys[keybindings.moveUp] || touchState.up,
+        d: !!rawKeys[keybindings.moveDown] || touchState.down
       });
     }
 
@@ -1472,6 +1649,7 @@
       else pingDisplay.style.color = "#ff3366";
     }
 
+    // x, y aqui já são coordenadas de tela
     function triggerVFX(x, y, color) {
       shockwaves.push({
         x: x,
@@ -1482,11 +1660,12 @@
       });
     }
 
-    function createDust(x, y, color, count) {
+    function createDust(x, y, color, count, z) {
+      const sp = proj(x, y, z === undefined ? platform.d / 2 : z);
       for (let i = 0; i < count; i++) {
         particles.push({
-          x: x,
-          y: y,
+          x: sp.x,
+          y: sp.y,
           vx: (Math.random() - 0.5) * 7,
           vy: (Math.random() - 0.5) * 7,
           color: color,
@@ -1495,11 +1674,12 @@
       }
     }
 
-    function createExplosion(x, y, color) {
+    function createExplosion(x, y, color, z) {
+      const sp = proj(x, y, z === undefined ? platform.d / 2 : z);
       for (let i = 0; i < 40; i++) {
         particles.push({
-          x: x,
-          y: y,
+          x: sp.x,
+          y: sp.y,
           vx: (Math.random() - 0.5) * 20,
           vy: (Math.random() - 0.5) * 20,
           color: color,
@@ -1541,11 +1721,14 @@
             const shiftActive = !!rawKeys[keybindings.sprint] || touchState.shift;
             const moveLeftActive = !!rawKeys[keybindings.moveLeft] || touchState.left;
             const moveRightActive = !!rawKeys[keybindings.moveRight] || touchState.right;
-            players[myId].updateMovement(moveLeftActive, moveRightActive, shiftActive);
+            const moveUpActive = !!rawKeys[keybindings.moveUp] || touchState.up;
+            const moveDownActive = !!rawKeys[keybindings.moveDown] || touchState.down;
+            players[myId].updateMovement(moveLeftActive, moveRightActive, shiftActive, moveUpActive, moveDownActive);
           }
           for (const cId in clientInputs) {
             if (players[cId]) {
-              players[cId].updateMovement(clientInputs[cId].left, clientInputs[cId].right, clientInputs[cId].shift);
+              const ci = clientInputs[cId];
+              players[cId].updateMovement(ci.left, ci.right, ci.shift, ci.up, ci.down);
             }
           }
         } else {
@@ -1554,6 +1737,7 @@
             if (pt.tx !== undefined) {
               pt.x += (pt.tx - pt.x) * 0.35;
               pt.y += (pt.ty - pt.y) * 0.35;
+              pt.z += (pt.tz - pt.z) * 0.35;
             }
           }
         }
@@ -1569,28 +1753,14 @@
       ctx.lineWidth = 2;
       ctx.strokeRect(30, 20, canvas.width - 60, canvas.height - 30);
 
-      ctx.fillStyle = theme.platFill;
-      ctx.strokeStyle = theme.platBorder;
-      ctx.lineWidth = 3;
-      ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
-      ctx.strokeRect(platform.x, platform.y, platform.w, platform.h);
+      drawPlatform3D(theme);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      for (let i = platform.x + 40; i < platform.x + platform.w; i += 50) {
-        ctx.fillRect(i, platform.y, 2, platform.h);
-      }
-      ctx.fillStyle = theme.platAcc;
-      ctx.fillRect(platform.x + 6, platform.y + 4, platform.w - 12, 2);
+      const drawList = Object.values(selectedRole === 'host' ? players : playerTargets);
 
-      if (selectedRole === 'host') {
-        for (const id in players) {
-          drawCowboyEntity(players[id]);
-        }
-      } else {
-        for (const id in playerTargets) {
-          drawCowboyEntity(playerTargets[id]);
-        }
-      }
+      // sombras primeiro (no chão), depois cowboys do fundo para a frente
+      for (const p of drawList) drawShadow(p);
+      drawList.sort((a, b) => (b.z === undefined ? 0 : b.z) - (a.z === undefined ? 0 : a.z));
+      for (const p of drawList) drawCowboyEntity(p);
 
       for (let i = shockwaves.length - 1; i >= 0; i--) {
         const sw = shockwaves[i];
